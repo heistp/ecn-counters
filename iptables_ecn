@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script adds some counters for ECN related statistics into and out of
-# a configured subnet.
+# the LAN subnet.
 
 # internal IPs
 LAN="192.168.0.0/16"
