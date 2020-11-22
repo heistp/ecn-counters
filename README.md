@@ -1,6 +1,9 @@
 # ecn-counters
 
-The attached script adds an iptables chain containing ECN related counters.
+The attached script manages an iptables chain in Linux to gather ECN related
+counters.
+
+Run `./iptables_ecn` for usage. Must be run as root to manage chains.
 
 ## Sample Run
 
@@ -60,8 +63,8 @@ appear to be from some external source.
 ### Perspective
 
 To put into perspective the percentage of CE marked packets we might typically
-observe on single flows, several tests with CUBIC and Prague through fq_codel at
-50Mbps are
+observe on single flows, several 60-second tests with CUBIC and Prague through
+fq_codel at 50Mbps are
 [here](http://sce.dnsmgr.net/results/l4s-2020-11-11T120000-final/l4s-s7-oneflow/).
 The CE marking percentage is based on the BDP and the CC algo in use.
 
