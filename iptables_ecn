@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# This script adds some counters for ECN related statistics into and out of
+# a configured subnet.
+
+# internal IPs
+LAN="192.168.0.0/16"
+
+# table to add chain and jump to
+TABLE="mangle"
+
+# name of created chain for ECN rules
+ECN_CHAIN="ecn_stats"
+
+# chain to add jump to ECN chain to
+JUMP_CHAIN="POSTROUTING"
+
+ipt_ecn() {
+	local dir="$1"
+	shift
+
+	# add counters for ECN related TCP flags
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp --syn -m comment --comment "ECN: All SYN $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp --syn -m ecn --ecn-tcp-cwr --ecn-tcp-ece -m comment --comment "ECN: ECN SYN $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp ! --syn -m ecn --ecn-tcp-ece -m comment --comment "ECN: ECE $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp ! --syn -m ecn --ecn-tcp-cwr -m comment --comment "ECN: CWR $dir" "$@"
+
+	# add counters for IP ECN field values
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m ecn --ecn-ip-ect 0 -m comment --comment "ECN: Not ECT $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m ecn --ecn-ip-ect 1 -m comment --comment "ECN: ECT(1) $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m ecn --ecn-ip-ect 2 -m comment --comment "ECN: ECT(0) $dir" "$@"
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m ecn --ecn-ip-ect 3 -m comment --comment "ECN: CE $dir" "$@"
+}
+
+ipt_jump() {
+	local op="$1"
+	iptables -t $TABLE $op $JUMP_CHAIN -m comment --comment "ECN: jump" -j $ECN_CHAIN
+}
+
+case $1 in
+	install)
+		echo "iptables_ecn: adding ecn table (run start to add jump)"
+		if iptables -t $TABLE -N $ECN_CHAIN; then
+			ipt_ecn out -s "$LAN"
+			ipt_ecn in -d "$LAN"
+		else
+			echo "iptables_ecn: ecn table already exists"
+			exit 1
+		fi
+		;;
+	start)
+		echo "iptables_ecn: adding jump"
+		ipt_jump -D >&/dev/null
+		if ! ipt_jump -A; then
+			echo "iptables_ecn: make sure to install first to add the ecn table"
+			exit 1
+		fi
+		;;
+	status)
+		if ! iptables -t $TABLE -L $ECN_CHAIN -n -v -x; then
+			echo "iptables_ecn: not started"
+			exit 1
+		fi
+		;;
+	stop)
+		echo "iptables_ecn: removing jump"
+		ipt_jump -D >&/dev/null
+		;;
+	uninstall)
+		echo "iptables_ecn: removing jump and clearing ecn table"
+		(
+		ipt_jump -D
+		iptables -t $TABLE -F $ECN_CHAIN
+		iptables -t $TABLE -X $ECN_CHAIN
+		) &>/dev/null
+		;;
+	*)
+		cat <<- EndOfUsage
+		iptables_ecn: install|start|status|stop|uninstall
+
+		install: create new $ECN_CHAIN chain, but do not add jump in $TABLE $JUMP_CHAIN
+		start: add jump in $TABLE $JUMP_CHAIN to $ECN_CHAIN chain
+		status: show $ECN_CHAIN chain statistics
+		stop: remove jump to $ECN_CHAIN chain from $TABLE $JUMP_CHAIN
+		uninstall: remove both $ECN_CHAIN chain and jump from $TABLE $JUMP_CHAIN
+		EndOfUsage
+		exit 1
+		;;
+esac
