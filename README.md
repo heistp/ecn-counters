@@ -53,28 +53,31 @@ A few statistics:
 The lack of a stateful analysis makes counters challenging to interpret, but:
 * there are a small but nonzero percentage of ECN initiating endpoints
 * there appears to be congestion signaling with CE, both from the inside and
-  outside of the network
+  outside of the network, which suggests RFC3168 AQM activity
 * there are a nonzero number of packets with ECT(1) set (not me!)
 
 A few of the ISP's backhaul links use fq_codel for queue management, but it's
-unknown how much this contributes to the statistics. The CE marks on ingress
-appear to be from some external source.
+unknown how much this contributes to the outgoing statistics. The CE marks on
+ingress appear to be from some external source.
 
 ### Perspective
 
 To put into perspective the percentage of CE marked packets we might typically
-observe on single flows, several 60-second tests with CUBIC and Prague through
-fq_codel at 50Mbps are
+observe on single flows, several 60-second tests with CUBIC, Reno and Prague
+through fq_codel at 50Mbps are
 [here](http://sce.dnsmgr.net/results/l4s-2020-11-11T120000-final/l4s-s7-oneflow/).
 The CE marking percentage is based on the BDP and the CC algo in use.
 
-From the results linked to above, here is a table of counters put together from
+From the results linked to above, below is a table of counters put together from
 the [scetrace](https://github.com/heistp/scetrace) json output, and the
-resulting percentage of CE marks on the total number of segments sent:
+resulting percentage of CE marks on the total number of segments sent. We do
+not include TCP Prague in this table since it's an experimental CC algorithm
+and CE marking ratios are not representative of what we see on the Internet
+today.
 
 | CC | RTT | Segments | CE Marks | Percent CE |
 | -- | --- | -------- | -------- | ---------- |
 | CUBIC | 20ms | 244292 | 46 | 0.01883% |
 | CUBIC | 80ms | 226654 | 14 | 0.00618% |
-| Prague | 20ms | 248790 | 5977 | 2.402% |
-| Prague | 80ms | 247715 | 2101 | 0.848% |
+| Reno | 20ms | 226173 | 57 | 0.02520% |
+| Reno | 80ms | 192094 | 14 | 0.00729% |
