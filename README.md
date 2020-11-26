@@ -57,8 +57,11 @@ The lack of a stateful analysis makes counters challenging to interpret, but:
 * there are a nonzero number of packets with ECT(1) set (not me!)
 
 A few of the ISP's backhaul links use fq_codel for queue management, but it's
-unknown how much this contributes to the outgoing statistics. The CE marks on
-ingress appear to be from some external source.
+unknown how much this contributes to the outgoing statistics, or whether it's
+from members that use AQM in their home gateways. The main gateway does not use
+AQM and does not experience congestion.
+
+The CE marks on ingress appear to be from external sources.
 
 ### Perspective
 
@@ -66,7 +69,7 @@ To put into perspective the percentage of CE marked packets we might typically
 observe on single flows, several 60-second tests with CUBIC, Reno and Prague
 through fq_codel at 50Mbps are
 [here](http://sce.dnsmgr.net/results/l4s-2020-11-11T120000-final/l4s-s7-oneflow/).
-The CE marking percentage is based on the BDP and the CC algo in use.
+The CE marking percentage is dependent on the BDP and the CC algo in use.
 
 From the results linked to above, below is a table of counters put together from
 the [scetrace](https://github.com/heistp/scetrace) json output, and the
