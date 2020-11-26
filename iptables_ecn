@@ -3,6 +3,8 @@
 # This script adds some counters for ECN related statistics into and out of
 # the LAN subnet.
 
+# TODO match AccECN SYN and SYN/ACK
+
 # internal IPs
 LAN="192.168.0.0/16"
 
@@ -21,23 +23,49 @@ ipt_ecn() {
 
 	# add counters for ECN related TCP flags
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m tcp --syn -m comment --comment "ECN: All SYN $dir" "$@"
+		-m tcp --syn \
+		-m comment --comment "ECN: All SYN $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m tcp --syn -m ecn --ecn-tcp-cwr --ecn-tcp-ece -m comment --comment "ECN: ECN SYN $dir" "$@"
+		-m tcp --syn \
+		-m ecn --ecn-tcp-cwr --ecn-tcp-ece \
+		-m comment --comment "ECN: ECN SYN $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m tcp ! --syn -m ecn --ecn-tcp-ece -m comment --comment "ECN: ECE $dir" "$@"
+		-m tcp --tcp-flags ALL SYN,ACK \
+		-m comment --comment "ECN: All SYN/ACK $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m tcp ! --syn -m ecn --ecn-tcp-cwr -m comment --comment "ECN: CWR $dir" "$@"
+		-m tcp --tcp-flags ALL SYN,ACK \
+		-m ecn --ecn-tcp-ece ! --ecn-tcp-cwr \
+		-m comment --comment "ECN: ECN SYN/ACK $dir" "$@"
+
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp ! --syn \
+		-m ecn --ecn-tcp-ece \
+		-m comment --comment "ECN: ECE $dir" "$@"
+
+	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
+		-m tcp ! --syn \
+		-m ecn --ecn-tcp-cwr \
+		-m comment --comment "ECN: CWR $dir" "$@"
 
 	# add counters for IP ECN field values
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m ecn --ecn-ip-ect 0 -m comment --comment "ECN: Not ECT $dir" "$@"
+		-m ecn --ecn-ip-ect 0 \
+		-m comment --comment "ECN: Not ECT $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m ecn --ecn-ip-ect 1 -m comment --comment "ECN: ECT(1) $dir" "$@"
+		-m ecn --ecn-ip-ect 1 \
+		-m comment --comment "ECN: ECT(1) $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m ecn --ecn-ip-ect 2 -m comment --comment "ECN: ECT(0) $dir" "$@"
+		-m ecn --ecn-ip-ect 2 \
+		-m comment --comment "ECN: ECT(0) $dir" "$@"
+
 	iptables -t $TABLE -A $ECN_CHAIN -p tcp \
-		-m ecn --ecn-ip-ect 3 -m comment --comment "ECN: CE $dir" "$@"
+		-m ecn --ecn-ip-ect 3 \
+		-m comment --comment "ECN: CE $dir" "$@"
 }
 
 ipt_jump() {
